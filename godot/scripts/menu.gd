@@ -1,7 +1,7 @@
 class_name GameMenu
 extends CanvasLayer
 
-## Стартовое меню и пауза по Esc.
+## Стартовое меню и пауза по Esc / P.
 ## start_immediately переживает reload сцены.
 
 static var start_immediately := false
@@ -40,9 +40,20 @@ static func is_restart_key(event: InputEvent) -> bool:
 	return key.keycode == KEY_R or key.physical_keycode == KEY_R
 
 
-static func focus_blocks_restart(viewport: Viewport) -> bool:
+static func is_pause_key(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return false
+	return key.keycode == KEY_P or key.physical_keycode == KEY_P
+
+
+static func focus_blocks_hotkeys(viewport: Viewport) -> bool:
 	var focused := viewport.gui_get_focus_owner()
 	return focused is LineEdit or focused is TextEdit or focused is CodeEdit
+
+
+static func focus_blocks_restart(viewport: Viewport) -> bool:
+	return focus_blocks_hotkeys(viewport)
 
 
 func wants_restart(event: InputEvent, viewport: Viewport = null) -> bool:
@@ -50,7 +61,7 @@ func wants_restart(event: InputEvent, viewport: Viewport = null) -> bool:
 		viewport = get_viewport()
 	if not is_restart_key(event):
 		return false
-	if focus_blocks_restart(viewport):
+	if focus_blocks_hotkeys(viewport):
 		return false
 	## Стартовый экран — «Начать игру», не рестарт.
 	if _open and not _pause_mode:
@@ -58,14 +69,33 @@ func wants_restart(event: InputEvent, viewport: Viewport = null) -> bool:
 	return true
 
 
-func _input(event: InputEvent) -> void:
-	if not event.is_action_pressed(&"ui_cancel"):
-		return
+func wants_pause_toggle(event: InputEvent, viewport: Viewport = null) -> bool:
+	if viewport == null:
+		viewport = get_viewport()
+	var cancel := event.is_action_pressed(&"ui_cancel")
+	var p_key := is_pause_key(event)
+	if not cancel and not p_key:
+		return false
+	## P на старте и в полях ввода не трогает паузу; Esc — как раньше.
+	if p_key and focus_blocks_hotkeys(viewport):
+		return false
+	if p_key and _open and not _pause_mode:
+		return false
+	return true
+
+
+func _apply_pause_toggle() -> void:
 	if _open:
 		if _pause_mode:
 			_close()
 	else:
 		_show_pause()
+
+
+func _input(event: InputEvent) -> void:
+	if not wants_pause_toggle(event):
+		return
+	_apply_pause_toggle()
 	get_viewport().set_input_as_handled()
 
 
@@ -157,7 +187,7 @@ func _fill_main_page(column: Control) -> void:
 	quit.pressed.connect(_on_quit)
 	column.add_child(quit)
 
-	_hint = _make_hint("Esc — продолжить · R — начать заново")
+	_hint = _make_hint("Esc / P — продолжить · R — начать заново")
 	_hint.visible = false
 	column.add_child(_hint)
 
