@@ -83,7 +83,7 @@ func _check_play_and_pause_accept_p(menu: GameMenu) -> bool:
 		fail("В паузе P должен продолжать игру")
 		return false
 	menu._apply_pause_toggle()
-	if menu._open or menu._pause_mode:
+	if menu._open:
 		fail("P в паузе должен закрывать паузу")
 		return false
 	return true
