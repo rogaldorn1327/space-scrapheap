@@ -3,8 +3,10 @@ extends CanvasLayer
 
 ## Стартовое меню и пауза по Esc / P.
 ## start_immediately переживает reload сцены.
+## reload_on_restart=false — только для тестов, без reload_current_scene.
 
 static var start_immediately := false
+static var reload_on_restart := true
 
 const _TITLE := "Космическая свалка"
 
@@ -30,21 +32,30 @@ func _ready() -> void:
 static func restart(tree: SceneTree) -> void:
 	start_immediately = true
 	tree.paused = false
-	tree.reload_current_scene()
+	if reload_on_restart:
+		tree.reload_current_scene()
+
+
+static func _is_letter_hotkey(
+		event: InputEvent, letter: Key, uni_a: int, uni_b: int, uni_c: int, uni_d: int
+) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return false
+	if key.keycode == letter or key.physical_keycode == letter or key.key_label == letter:
+		return true
+	var uni := key.unicode
+	return uni == uni_a or uni == uni_b or uni == uni_c or uni == uni_d
 
 
 static func is_restart_key(event: InputEvent) -> bool:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
-		return false
-	return key.keycode == KEY_R or key.physical_keycode == KEY_R
+	## R r + ЙЦУКЕН «К/к» на той же физической клавише.
+	return _is_letter_hotkey(event, KEY_R, 82, 114, 0x041A, 0x043A)
 
 
 static func is_pause_key(event: InputEvent) -> bool:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
-		return false
-	return key.keycode == KEY_P or key.physical_keycode == KEY_P
+	## P p + ЙЦУКЕН «З/з» на той же физической клавише.
+	return _is_letter_hotkey(event, KEY_P, 80, 112, 0x0417, 0x0437)
 
 
 static func focus_blocks_hotkeys(viewport: Viewport) -> bool:
@@ -93,17 +104,15 @@ func _apply_pause_toggle() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	## R тоже здесь: _unhandled_input не доходит при фокусе кнопки и часто при паузе дерева.
+	if wants_restart(event):
+		get_viewport().set_input_as_handled()
+		restart(get_tree())
+		return
 	if not wants_pause_toggle(event):
 		return
 	_apply_pause_toggle()
 	get_viewport().set_input_as_handled()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not wants_restart(event):
-		return
-	get_viewport().set_input_as_handled()
-	restart(get_tree())
 
 
 func _show_start() -> void:
@@ -127,6 +136,11 @@ func _show_pause() -> void:
 func _close() -> void:
 	_set_open(false)
 	get_tree().paused = false
+	if is_instance_valid(_primary):
+		_primary.release_focus()
+	var vp := get_viewport()
+	if vp != null:
+		vp.gui_release_focus()
 
 
 func _set_open(open: bool) -> void:
