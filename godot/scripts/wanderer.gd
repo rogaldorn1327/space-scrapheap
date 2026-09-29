@@ -235,7 +235,7 @@ func _show_doom_and_restart() -> void:
 	label.grow_vertical = Control.GROW_DIRECTION_BOTH
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.text = "Вы умерли.\nБесконечно скитаясь в космосе.\n\nНажмите мышь — начать снова"
+	label.text = "Вы умерли.\nБесконечно скитаясь в космосе.\n\nНажмите мышь или R — начать снова"
 	label.add_theme_font_size_override("font_size", 36)
 	label.add_theme_color_override("font_color", Color(0.92, 0.93, 1.0))
 	label.position = Vector2(-420, -90)

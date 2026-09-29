@@ -33,6 +33,31 @@ static func restart(tree: SceneTree) -> void:
 	tree.reload_current_scene()
 
 
+static func is_restart_key(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return false
+	return key.keycode == KEY_R or key.physical_keycode == KEY_R
+
+
+static func focus_blocks_restart(viewport: Viewport) -> bool:
+	var focused := viewport.gui_get_focus_owner()
+	return focused is LineEdit or focused is TextEdit or focused is CodeEdit
+
+
+func wants_restart(event: InputEvent, viewport: Viewport = null) -> bool:
+	if viewport == null:
+		viewport = get_viewport()
+	if not is_restart_key(event):
+		return false
+	if focus_blocks_restart(viewport):
+		return false
+	## Стартовый экран — «Начать игру», не рестарт.
+	if _open and not _pause_mode:
+		return false
+	return true
+
+
 func _input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"ui_cancel"):
 		return
@@ -42,6 +67,13 @@ func _input(event: InputEvent) -> void:
 	else:
 		_show_pause()
 	get_viewport().set_input_as_handled()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not wants_restart(event):
+		return
+	get_viewport().set_input_as_handled()
+	restart(get_tree())
 
 
 func _show_start() -> void:
@@ -125,7 +157,7 @@ func _fill_main_page(column: Control) -> void:
 	quit.pressed.connect(_on_quit)
 	column.add_child(quit)
 
-	_hint = _make_hint("Esc — продолжить")
+	_hint = _make_hint("Esc — продолжить · R — начать заново")
 	_hint.visible = false
 	column.add_child(_hint)
 
