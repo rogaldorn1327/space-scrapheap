@@ -1,12 +1,10 @@
 class_name GameMenu
 extends CanvasLayer
 
-## Стартовое меню и пауза по Esc / P.
+## Стартовое меню и пауза по Esc.
 ## start_immediately переживает reload сцены.
-## reload_on_restart=false — только для тестов, без reload_current_scene.
 
 static var start_immediately := false
-static var reload_on_restart := true
 
 const _TITLE := "Космическая свалка"
 
@@ -32,86 +30,17 @@ func _ready() -> void:
 static func restart(tree: SceneTree) -> void:
 	start_immediately = true
 	tree.paused = false
-	if reload_on_restart:
-		tree.reload_current_scene()
+	tree.reload_current_scene()
 
 
-static func _is_letter_hotkey(
-		event: InputEvent, letter: Key, uni_a: int, uni_b: int, uni_c: int, uni_d: int
-) -> bool:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
-		return false
-	if key.keycode == letter or key.physical_keycode == letter or key.key_label == letter:
-		return true
-	var uni := key.unicode
-	return uni == uni_a or uni == uni_b or uni == uni_c or uni == uni_d
-
-
-static func is_restart_key(event: InputEvent) -> bool:
-	## R r + ЙЦУКЕН «К/к» на той же физической клавише.
-	return _is_letter_hotkey(event, KEY_R, 82, 114, 0x041A, 0x043A)
-
-
-static func is_pause_key(event: InputEvent) -> bool:
-	## P p + ЙЦУКЕН «З/з» на той же физической клавише.
-	return _is_letter_hotkey(event, KEY_P, 80, 112, 0x0417, 0x0437)
-
-
-static func focus_blocks_hotkeys(viewport: Viewport) -> bool:
-	var focused := viewport.gui_get_focus_owner()
-	return focused is LineEdit or focused is TextEdit or focused is CodeEdit
-
-
-static func focus_blocks_restart(viewport: Viewport) -> bool:
-	return focus_blocks_hotkeys(viewport)
-
-
-func wants_restart(event: InputEvent, viewport: Viewport = null) -> bool:
-	if viewport == null:
-		viewport = get_viewport()
-	if not is_restart_key(event):
-		return false
-	if focus_blocks_hotkeys(viewport):
-		return false
-	## Стартовый экран — «Начать игру», не рестарт.
-	if _open and not _pause_mode:
-		return false
-	return true
-
-
-func wants_pause_toggle(event: InputEvent, viewport: Viewport = null) -> bool:
-	if viewport == null:
-		viewport = get_viewport()
-	var cancel := event.is_action_pressed(&"ui_cancel")
-	var p_key := is_pause_key(event)
-	if not cancel and not p_key:
-		return false
-	## P на старте и в полях ввода не трогает паузу; Esc — как раньше.
-	if p_key and focus_blocks_hotkeys(viewport):
-		return false
-	if p_key and _open and not _pause_mode:
-		return false
-	return true
-
-
-func _apply_pause_toggle() -> void:
+func _input(event: InputEvent) -> void:
+	if not event.is_action_pressed(&"ui_cancel"):
+		return
 	if _open:
 		if _pause_mode:
 			_close()
 	else:
 		_show_pause()
-
-
-func _input(event: InputEvent) -> void:
-	## R тоже здесь: _unhandled_input не доходит при фокусе кнопки и часто при паузе дерева.
-	if wants_restart(event):
-		get_viewport().set_input_as_handled()
-		restart(get_tree())
-		return
-	if not wants_pause_toggle(event):
-		return
-	_apply_pause_toggle()
 	get_viewport().set_input_as_handled()
 
 
@@ -136,11 +65,6 @@ func _show_pause() -> void:
 func _close() -> void:
 	_set_open(false)
 	get_tree().paused = false
-	if is_instance_valid(_primary):
-		_primary.release_focus()
-	var vp := get_viewport()
-	if vp != null:
-		vp.gui_release_focus()
 
 
 func _set_open(open: bool) -> void:
@@ -201,7 +125,7 @@ func _fill_main_page(column: Control) -> void:
 	quit.pressed.connect(_on_quit)
 	column.add_child(quit)
 
-	_hint = _make_hint("Esc / P — продолжить · R — начать заново")
+	_hint = _make_hint("Esc — продолжить")
 	_hint.visible = false
 	column.add_child(_hint)
 
